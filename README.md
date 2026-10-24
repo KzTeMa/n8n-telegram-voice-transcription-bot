@@ -4,7 +4,7 @@ A private Telegram bot that turns your voice messages into clean, structured tex
 
 Send a voice note (your own or forwarded from someone else) → the bot replies with **two messages**: a cleaned transcript and a short summary. One tap on the inline button to translate, or to draft a polished English email from the same content. If you literally say *"write an email"* in the voice, the bot generates the email automatically as a third message.
 
-Powered by **Groq** (Whisper-large-v3-turbo for transcription, Llama-3.3-70b-versatile for cleanup / summarization / translation / email composition). Designed for the Groq **free tier** — zero infrastructure cost beyond your existing n8n instance.
+Powered by **Groq** (Whisper-large-v3-turbo for transcription, GPT-OSS-120B for cleanup / summarization / translation / email composition). Designed for the Groq **free tier** — zero infrastructure cost beyond your existing n8n instance.
 
 ---
 
@@ -125,20 +125,21 @@ The workflow is designed to fit comfortably in Groq's free tier ([rate limits pa
 | Model | Free tier limit | What it does |
 |---|---|---|
 | `whisper-large-v3-turbo` | 20 RPM • 2 000 requests/day • 7 200 sec audio/hour | Voice transcription |
-| `llama-3.3-70b-versatile` | 30 RPM • 1 000 requests/day • 12 K tokens/min • **100 K tokens/day** | Cleanup, summary, translation, email |
+| `openai/gpt-oss-120b` | 30 RPM • 1 000 requests/day • 8 K tokens/min • **200 K tokens/day** | Cleanup, summary, translation, email |
 
-**Practical capacity per day on the free tier:**
+> **Model change (October 2026):** Groq retired `llama-3.3-70b-versatile` — requests now fail with `404 model does not exist`. The workflow uses `openai/gpt-oss-120b` instead. It is a reasoning model, so both LLM nodes send `reasoning_effort: 'low'`: without it the hidden reasoning eats up to half of `max_tokens` and long voices may get cut off. If you imported an older copy of `transcriptor.json`, change the `model` line in the `Build LLM Body` and `Lookup + Build Translate` Code nodes the same way. Current model list: `GET https://api.groq.com/openai/v1/models`.
+
+**Practical capacity per day on the free tier** (a 1-minute voice costs ~1.3 K tokens for transcript + summary):
 
 | Usage pattern | Approx voices/day |
 |---|---|
-| Just transcribe + summarize | ~50 |
-| + tap Translate on every reply | ~25 |
-| + auto-email or Email button on every reply | ~15–20 |
+| Just transcribe + summarize | ~100 |
+| + tap Translate on every reply | ~50 |
+| + auto-email or Email button on every reply | ~30–40 |
 
-The bottleneck is **TPD** (tokens per day) on Llama. If you hit it, you have three options:
+The bottleneck is **TPD** (tokens per day) on the LLM. Other Groq text models (`openai/gpt-oss-20b`, `qwen/qwen3.8-27b`) share the same free-tier limits, so swapping models won't help. If you hit it, you have two options:
 1. Upgrade to Groq **Developer tier** for much higher limits.
-2. Swap the LLM model to `llama-3.1-8b-instant` (higher limits, lower quality).
-3. Add a fallback to OpenAI `gpt-4o-mini` (~$0.001 per voice, not free but cheap).
+2. Add a fallback to OpenAI `gpt-4o-mini` (~$0.001 per voice, not free but cheap).
 
 Whisper limits (audio seconds/hour and requests/day) are not a real constraint for personal use.
 
@@ -178,4 +179,4 @@ MIT — do anything you want with it.
 
 ## Credits
 
-Built with [n8n](https://n8n.io/) (workflow automation), [Groq](https://groq.com/) (Whisper + Llama hosting), and the [Telegram Bot API](https://core.telegram.org/bots/api).
+Built with [n8n](https://n8n.io/) (workflow automation), [Groq](https://groq.com/) (Whisper + GPT-OSS hosting), and the [Telegram Bot API](https://core.telegram.org/bots/api).
